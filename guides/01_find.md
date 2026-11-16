@@ -4,7 +4,7 @@ key: find
 title: 영상 찾기
 ai: false
 settings:
-  search.keywords: [연애, 재회, 남자심리, 여자심리, 썸]
+  search.keywords: [연애, 남자심리, 여자심리, 썸, 재회]
   search.max_results: 12
   search.rising.min_views: 1000
   search.rising.max_views: 5000

@@ -1,35 +1,36 @@
 # 운명원 유튜브 댓글 에이전트 대시보드 설정
+#· typing · verify · demo · 게시 간격)
 
-profiles: [유튜브1, 유튜브2, 유튜브3]   # 내 컴퓨터의 크롬 프로필 (폴더는 profiles_dir 아래 자동 생성)
+profiles: [유튜브1, 유튜브2, 유튜브3]  # 내 컴퓨터의 크롬 프로필 (폴더는 profiles_dir 아래 자동 생성)
 default_profile: 유튜브1
-profile_assign: round_robin            # round_robin: 영상마다 돌아가며 자동 배정(화면에서 바꿀 수 있음) · manual: 직접 고르기만
+profile_assign: round_robin  #· manual: 직접 고르기만
 profiles_dir: ./profiles
 
 comment: { min_chars: 40, max_chars: 120, brand: 운명원 }
 
 limits:
-  daily_max_comments: 10      # 하루 게시 상한 — 전 프로필 합산, 자정(KST) 초기화
-  min_interval_min: 0         # 연속 게시 사이 최소 간격(분). 0 = 끔. 켜려면 예: 20
-  interval_jitter_min: 5      # 간격에 더하는 0~5분 (화면에 '다음 게시 가능 시각'으로 표시)
+  daily_max_comments: 10  # 하루 게시 상한 — 전 프로필 합산, KST 자정 초기화 (안전 상한 20)
+  min_interval_min: 0  # 연속 게시 사이 최소 간격(분). 0 = 끔(사용자 결정 —
+  interval_jitter_min: 5  # 간격에 더하는 0~5분 (직전 게시마다 정해지는 값 · 화면에 '다음 게시 가능 시각'으로 표시)
 
 search:
-  keywords: [연애, 재회, 남자심리, 여자심리]   # 기본 검색어 (화면에서 바꿀 수 있음)
+  keywords: [연애, 재회, 남자심리, 여자심리]  #
   max_results: 12
-  rising: { min_views: 1000, max_views: 5000, min_views_per_hour: 150, max_hours: 72 }   # 뜨기 직전 영상 기준 (초안까지만)
+  rising: { min_views: 1000, max_views: 5000, min_views_per_hour: 150, max_hours: 72 }  #
 
-typing: { per_char_ms: [80, 150], punct_pause_ms: 300 }   # 글자당 80~150ms + 문장부호 뒤 300ms
-verify: { logged_out_check: true }                        # 게시 뒤 로그아웃 화면에서도 보이는지 확인
-demo: { cleanup_enabled: true }                           # 시연 댓글 일괄 삭제 버튼
+typing: { per_char_ms: [80, 150], punct_pause_ms: 300 }  #
+verify: { logged_out_check: true }  #
+demo: { cleanup_enabled: true }  #
 
 posting:
-  timeout_s: 180               # 게시 전체 제한(초) — 입력 + 확인(새로고침·최신순) + 로그아웃 화면 확인
-  disclosure_enabled: false    # 광고 표기 자동으로 붙이기 (기본: 끔). true 면 내 채널이 아닌 영상에 아래 문구를 앞에 붙임
+  timeout_s: 180  # 게시 전체 제한(초) — 입력 15~20초 + 확인(새로고침·최신순) + 로그아웃 화면 확인
+  disclosure_enabled: false  # 광고 표기 자동으로 붙이기 (사용자 결정: 끔). true 면 내 채널이 아닌 영상에 아래 문구를 앞에 붙임
   disclosure_prefix: "[광고] "  # 켤 때 쓰는 표기 문구. '광고'·'협찬'·'유료' 중 하나 필수
 
 ai:
-  provider: auto     # 사용할 AI 제공자 (화면에서 고름)
-  model: ""          # 비우면 제공자 기본 모델
-  max_attempts: 3    # 검증 실패 시 재생성 횟수
+  provider: auto  # auto | anthropic | openai | gemini | hermes
+  model: ""  # 비우면 제공자 기본 모델
+  max_attempts: 3  # 검증 실패 시 재생성 횟수
 
-server: { host: 127.0.0.1, port: 8765, lan: true }   # lan: true = 같은 와이파이·사내망의 다른 PC 도 접속
+server: { host: 127.0.0.1, port: 8765, lan: true }  # lan: true = 같은 와이파이·사내망의 다른 PC 도 접속 (비밀번호 없음)
 data_dir: ./data
