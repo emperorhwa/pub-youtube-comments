@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>운명원 댓글 도우미</title>
+<!-- 화면: static/index.html · app.js · styles.css (빌드 도구 · 외부 JS 없음, 글꼴 CSS 만 CDN) -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%231b5e46'/%3E%3Cpath d='M8 10h16v10h-9l-5 4v-4H8z' fill='white'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="/static/styles.css?v=1">
+</head>
+<body data-wstep="1">
+<!-- 헤더에는 로고와 [설정] 둘만 — 폭은 본문과 같은 .shell (화면 60% · 최소 1000px · 가운데) -->
+<header class="topbar">
+ <div class="shell topbar-in">
+ <span class="brand-name">YouTube Comments</span>
+ <button type="button" class="btn btn-settings" id="btn-settings" data-action="open-settings" title="설정 — 프로필 · 영상 찾기 · 댓글 규칙 · 게시 · AI 엔진 · AI 말투">설정</button>
+ </div>
+</header>
+
+<main class="page" id="main">
+ <!-- 왼쪽 여백의 작업 목록 1·2·3·4… — 좁은 화면(왼쪽 여백 220px 미만)은 본문 위 가로 줄 -->
+ <aside class="job-rail" id="job-rail" aria-label="초안 작업 목록" aria-live="polite" hidden></aside>
+ <div class="shell">
+ <div class="offline" id="offline" role="alert" hidden></div>
+
+ <!-- 첫 실행 안내 — 프로필 로그인 → AI 키 → 운영 화면 (조건이 이미 맞으면 건너뜀) -->
+ <section class="onboard" id="onboard" aria-labelledby="ob-title" hidden></section>
+
+ <!-- 단계 표시 — 헤더가 아니라 본문 맨 위에 크게. 번호 체계는 1 · 2 · 3 하나만 -->
+ <nav class="wiz-steps" id="wiz-steps" aria-label="진행 단계">
+ <button type="button" class="ws" data-n="1" data-action="wiz-jump" aria-current="step"><b>1</b> 영상</button>
+ <span class="ws-arrow" aria-hidden="true">→</span>
+ <button type="button" class="ws" data-n="2" data-action="wiz-jump"><b>2</b> 글 확인</button>
+ <span class="ws-arrow" aria-hidden="true">→</span>
+ <button type="button" class="ws" data-n="3" data-action="wiz-jump"><b>3</b> 올리기</button>
+ </nav>
+
+ <div class="wiz-wrap">
+ <div class="bench">
+ <!-- 1단계 — 어떤 영상에 댓글을 달까요? -->
+ <section class="col col-1" id="step1" aria-labelledby="h-step1" data-state="active" data-seg="kw">
+ <header class="col-head">
+ <div class="col-title">
+ <div class="col-title-row">
+ <p class="wiz-stepno">1단계 / 3단계</p>
+ <h2 id="h-step1" tabindex="-1">어떤 영상에 댓글을 달까요?</h2>
+ </div>
+ <p class="col-hint" id="hint1">키워드로 찾거나, 링크를 바로 넣어도 돼요</p>
+ </div>
+ <!-- '이 단계 설정' = 보조 버튼(40px · 테두리) + 지금 값 요약 한 줄 -->
+ <div class="step-set">
+ <p class="step-set-sum" id="sset-c1" data-for="c1"></p>
+ <button type="button" class="guide-chip" data-action="guide-pop" data-keys="find,read" data-focus-key="gchip-c1" aria-haspopup="dialog" aria-expanded="false" aria-label="영상 찾기 · 영상 읽기 단계 설정 열기" aria-describedby="sset-c1"><span>이 단계 설정</span></button>
+ <span class="step-set-mark" hidden>기본값에서 바뀜</span>
+ </div>
+ <span class="col-meta" id="meta1"></span>
+ </header>
+ <!-- 섹션 A — 영상 찾기 -->
+ <section class="wsec" id="sec-find" aria-labelledby="sec-find-t">
+ <div class="wsec-head"><div class="wsec-ht"><h3 class="wsec-t" id="sec-find-t">영상 찾기<span class="wsec-now">지금 할 일</span></h3><p class="wsec-d" id="sec-find-d">키워드를 고르거나 링크를 넣어요</p></div></div>
+ <div class="wsec-body">
+ <!-- 세그먼트 3개: 키워드로 찾기(기본) · 뜨기 직전 · 링크 넣기 -->
+ <div class="wseg" id="wseg" role="radiogroup" aria-label="영상 찾는 방법">
+ <button type="button" role="radio" class="wseg-btn is-on" aria-checked="true" data-action="wseg" data-seg="kw">키워드로 찾기</button>
+ <button type="button" role="radio" class="wseg-btn" aria-checked="false" data-action="wseg" data-seg="rising">뜨기 직전</button>
+ <button type="button" role="radio" class="wseg-btn" aria-checked="false" data-action="wseg" data-seg="url">링크 넣기</button>
+ </div>
+ <div class="c1-controls" id="c1-controls">
+ <span class="field-label" id="kw-label">키워드</span>
+ <div class="kw-chips" id="kw-chips" role="radiogroup" aria-labelledby="kw-label"></div>
+ <button type="button" class="btn btn-block" id="btn-load" data-action="load" disabled>영상 불러오기</button>
+ <p class="lock-reason" id="load-reason" hidden></p>
+ </div>
+ <div class="tabs" role="tablist" aria-label="영상 목록 종류" hidden>
+ <button type="button" role="tab" class="tab" id="tab-latest" data-action="tab" data-tab="latest" aria-selected="true" aria-controls="video-list">최신 영상<span class="tab-count" id="cnt-latest"></span></button>
+ <button type="button" role="tab" class="tab" id="tab-rising" data-action="tab" data-tab="rising" aria-selected="false" aria-controls="video-list">뜨기 직전 영상<span class="tab-count" id="cnt-rising"></span></button>
+ </div>
+ <p class="rising-note" id="rising-note" hidden></p>
+ <form class="c1-url" id="url-form" autocomplete="off" novalidate>
+ <label class="field-label" for="url-input">영상 링크를 붙여 넣어 주세요</label>
+ <div class="url-row">
+ <input class="input" id="url-input" type="text" inputmode="url" placeholder="https://youtu.be/… 또는 영상 ID 11자리" spellcheck="false">
+ <button type="submit" class="btn btn-primary" id="btn-url">이 영상으로</button>
+ </div>
+ <p class="lock-reason" id="url-reason" hidden></p>
+ </form>
+ </div>
+ </section>
+ <!-- 섹션 B — 영상 목록 (오른쪽: '연애' 최신 33개 · 3개 고름) -->
+ <section class="wsec" id="sec-list" aria-labelledby="sec-list-t">
+ <div class="wsec-head"><div class="wsec-ht"><h3 class="wsec-t" id="sec-list-t">영상 목록<span class="wsec-now">지금 할 일</span></h3><p class="wsec-d">눌러서 여러 개 고를 수 있어요 · 고른 영상은 아래 바에서 한 번에 시작해요</p></div><p class="wsec-aside" id="list-meta" aria-live="polite"></p></div>
+ <div class="wsec-body">
+ <!-- tabindex=-1 · data-focus-home: 다시 그려 포커스한 버튼이 사라지면 포커스를 받는 자리 (BODY 로 빠지지 않게) -->
+ <div class="c1-list" id="video-list" role="tabpanel" aria-label="영상 목록" tabindex="-1" data-focus-home=""></div>
+ <!-- 그리드 맨 아래 감지 요소 — 보이면 다음 묶음(offset=next_offset)을 이어 붙인다 -->
+ <div class="more-zone" id="more-zone" hidden>
+ <div class="more-status" id="more-status" aria-live="polite"></div>
+ <div class="more-sentinel" id="more-sentinel" aria-hidden="true"></div>
+ </div>
+ </div>
+ </section>
+ <!-- 하단 고정 바 — 가운데 작업 화면과 같은 폭. 고르기 전에는 [초안 만들기 시작]을 누를 수 없다 -->
+ <div class="start-bar" id="msel-bar" role="region" aria-label="초안 만들기">
+ <p class="start-status" id="start-status" aria-live="polite">영상을 골라 주세요</p>
+ <span class="start-act is-off" id="start-act" title="영상을 먼저 하나 이상 골라 주세요">
+ <button type="button" class="btn btn-primary start-btn" id="btn-start" data-action="jobs-start" disabled aria-describedby="start-tip">초안 만들기 시작</button>
+ <span class="start-tip" id="start-tip" role="tooltip">영상을 먼저 하나 이상 골라 주세요</span>
+ </span>
+ </div>
+ </section>
+
+ <!-- 2단계 — 글을 읽어 보세요 -->
+ <section class="col col-2" id="step2" aria-labelledby="h-step2" data-state="todo">
+ <header class="col-head">
+ <div class="col-title">
+ <div class="col-title-row">
+ <p class="wiz-stepno">2단계 / 3단계</p>
+ <h2 id="h-step2" tabindex="-1">글을 읽어 보세요</h2>
+ </div>
+ <p class="col-hint" id="hint2">영상을 고르면 AI가 고민과 초안을 써요</p>
+ </div>
+ <div class="step-set">
+ <p class="step-set-sum" id="sset-c2" data-for="c2"></p>
+ <button type="button" class="guide-chip" data-action="guide-pop" data-keys="concern,comment,check" data-focus-key="gchip-c2" aria-haspopup="dialog" aria-expanded="false" aria-label="고민 정리 · 댓글 작성 · 규칙 검사 단계 설정 열기" aria-describedby="sset-c2"><span>이 단계 설정</span></button>
+ <span class="step-set-mark" hidden>기본값에서 바뀜</span>
+ </div>
+ <span class="col-meta" id="meta2"></span>
+ </header>
+ <!-- 섹션 A — 고른 영상 (B~E 섹션은 #draft-body 안에서 그린다) -->
+ <section class="wsec" id="sec-video" aria-labelledby="sec-video-t" hidden>
+ <div class="wsec-head"><div class="wsec-ht"><h3 class="wsec-t" id="sec-video-t">고른 영상</h3><p class="wsec-d">이 영상을 읽고 쓴 글이에요</p></div></div>
+ <div class="wsec-body"><div class="c2-video" id="c2-video" hidden></div></div>
+ </section>
+ <div class="col-body" id="draft-body" tabindex="-1" data-focus-home=""></div>
+ <!-- 2단계 행동 바 — [← 이전으로] … [다시 써 줘] [좋아요, 다음 →] (주 버튼은 여기 하나) -->
+ <div class="act-bar" id="c2-bar" role="region" aria-label="2단계 행동"></div>
+ </section>
+
+ <!-- 3단계 — 이대로 올릴까요? -->
+ <section class="col col-3" id="step3" aria-labelledby="h-step3" data-state="todo">
+ <header class="col-head">
+ <div class="col-title">
+ <div class="col-title-row">
+ <p class="wiz-stepno">3단계 / 3단계</p>
+ <h2 id="h-step3" tabindex="-1">이대로 올릴까요?</h2>
+ </div>
+ <p class="col-hint" id="hint3">앞 단계를 마치면 누를 수 있어요</p>
+ </div>
+ <div class="step-set">
+ <p class="step-set-sum" id="sset-c3" data-for="c3"></p>
+ <button type="button" class="guide-chip" data-action="guide-pop" data-keys="post,verify,record" data-focus-key="gchip-c3" aria-haspopup="dialog" aria-expanded="false" aria-label="게시 · 확인 · 기록 정리 단계 설정 열기" aria-describedby="sset-c3"><span>이 단계 설정</span></button>
+ <span class="step-set-mark" hidden>기본값에서 바뀜</span>
+ </div>
+ <span class="col-meta" id="meta3"></span>
+ </header>
+ <div class="col-body c3-body">
+ <!-- 섹션 A — 올릴 계정 -->
+ <section class="wsec" id="sec-acct" aria-labelledby="prof-label">
+ <div class="wsec-head"><div class="wsec-ht"><h3 class="wsec-t" id="prof-label">올릴 계정<span class="wsec-now">지금 할 일</span></h3><p class="wsec-d">어느 계정으로 달지 확인해요 · 자동 배정이면 차례대로 돌아가요</p></div>
+ <button type="button" class="btn-link wsec-aside" data-action="open-profiles">프로필 관리</button></div>
+ <div class="wsec-body">
+ <div class="prof-seg" id="prof-seg" role="radiogroup" aria-labelledby="prof-label"></div>
+ <p class="prof-status" id="prof-status"></p>
+ </div>
+ </section>
+ <!-- 섹션 B — 올라갈 모습 -->
+ <section class="wsec" id="sec-look" aria-labelledby="sec-look-t">
+ <div class="wsec-head"><div class="wsec-ht"><h3 class="wsec-t" id="sec-look-t">올라갈 모습</h3><p class="wsec-d">이 영상에 이 모습으로 댓글이 올라가요</p></div></div>
+ <div class="wsec-body">
+ <div id="target"></div>
+ <div class="post-preview" id="post-preview" hidden></div>
+ </div>
+ </section>
+ <!-- 섹션 C — 진행 상황 -->
+ <section class="wsec" id="sec-run" aria-labelledby="sec-run-t">
+ <div class="wsec-head"><div class="wsec-ht"><h3 class="wsec-t" id="sec-run-t">진행 상황<span class="wsec-now">지금 할 일</span></h3><p class="wsec-d" id="sec-run-d">누르면 이렇게 진행돼요</p></div></div>
+ <div class="wsec-body c3-side" id="c3-side">
+ <!-- [댓글 달기]를 누르면 키보드 포커스가 진행 카드로 오고, 끝나면 결과의 첫 행동 버튼으로 간다 -->
+ <div id="progress" aria-live="polite" role="group" aria-label="진행 상태" tabindex="-1" data-focus-home=""></div>
+ <div id="result" data-focus-home="#progress"></div>
+ <div class="c3-foot" id="c3-foot"></div>
+ </div>
+ </section>
+ <!-- 3단계 행동 바 — [← 이전으로] … [올리기] / 끝나면 [다음 작업(N번)으로 →] [다음 영상으로] -->
+ <div class="act-bar" id="c3-bar" role="region" aria-label="3단계 행동">
+ <div class="act-left">
+ <button type="button" class="btn act-back" data-action="wiz-back" data-to="2">← 이전으로</button>
+ <div class="act-status">
+ <p class="post-lead" id="post-lead"></p>
+ <p class="post-reason" id="post-reason" aria-live="polite" tabindex="-1"></p>
+ </div>
+ </div>
+ <div class="act-right" id="c3-bar-right">
+ <span class="act-extra" id="c3-bar-extra"></span>
+ <button type="button" class="btn btn-hero" id="btn-post" data-action="post" aria-describedby="post-reason" disabled>올리기</button>
+ </div>
+ <!-- 게시 간격 카운트다운(mm:ss · 막대) — 화면 읽기는 위 이유 한 줄이 분 단위로 알려 준다 -->
+ <div class="cooldown" id="post-cool" aria-hidden="true" hidden></div>
+ </div>
+ </div>
+ </section>
+ </div>
+
+ <!-- 오른쪽 고정 패널 '오늘' — 어느 단계에서든 진행 · 최근 기록이 보인다 -->
+ <aside class="today-panel" id="today-panel" aria-label="오늘 현황판">
+ <section class="tp-top">
+ <h3 class="tp-h">오늘</h3>
+ <p class="tp-count" id="tp-count"><b>–</b><span class="tp-max">/ 10</span></p>
+ <div class="tp-dots" id="tp-dots" aria-label="오늘 게시 10칸"></div>
+ <div class="tp-run" id="tp-run" hidden></div>
+ </section>
+ <section class="tp-recent">
+ <h3 class="tp-h">최근 기록</h3>
+ <div class="tp-list" id="tp-list"></div>
+ </section>
+ <button type="button" class="btn-link tp-all" data-action="toggle-history">기록 전체 보기 →</button>
+ </aside>
+ </div>
+
+ <!-- 기록 — 날짜별: 왼쪽 날짜 목록(GET /api/posts/days) · 오른쪽 그날 댓글(GET /api/posts?date=) -->
+ <section class="history" id="history" role="dialog" aria-modal="true" aria-labelledby="h-history" hidden>
+ <header class="hist-head">
+ <div class="hist-title">
+ <h2 id="h-history" tabindex="-1">기록</h2>
+ <p class="col-hint">날짜를 고르면 그날 단 댓글이 보여요. 최신이 위에 와요.</p>
+ <div class="hist-dots" id="hist-dots" aria-label="오늘 게시 현황"></div>
+ </div>
+ <span class="hist-auto" id="hist-auto"><span class="live-dot"></span>5초마다 새로고침</span>
+ <details class="hist-menu" id="hist-menu" hidden>
+ <summary class="btn" aria-label="시연 댓글 정리 메뉴">시연 댓글 정리</summary>
+ <div class="hist-menu-body"><div class="hist-bulk" id="hist-bulk"></div></div>
+ </details>
+ <button type="button" class="btn" id="hist-close" data-action="toggle-history">닫기</button>
+ </header>
+ <!-- 섹션 카드 2장 — 날짜 / 그날 댓글 -->
+ <div class="hist-shell">
+ <section class="wsec hist-days-sec" aria-labelledby="hd-t">
+ <div class="wsec-head"><div class="wsec-ht"><h3 class="wsec-t" id="hd-t">날짜</h3><p class="wsec-d">최신이 위 · 누르면 그날 댓글</p></div></div>
+ <div class="wsec-body"><aside class="hist-days" id="hist-days" aria-label="날짜 목록"></aside></div>
+ </section>
+ <section class="wsec hist-main" aria-labelledby="hm-t">
+ <div class="wsec-head"><div class="wsec-ht"><h3 class="wsec-t" id="hm-t">그날 댓글</h3><p class="wsec-d" id="hm-d">시간 · 영상 · 계정 · 올린 글 · 결과</p></div>
+ <div class="wsec-aside"><div class="hist-filters" id="hist-filters" role="group" aria-label="기록 거르기"></div></div></div>
+ <div class="wsec-body">
+ <div class="hist-cols" aria-hidden="true">
+ <span>시간</span><span>영상</span><span>계정</span><span>게시 문장</span><span>결과 · 사유</span><span></span>
+ </div>
+ <div class="hist-list" id="hist-list" data-focus-home="#hist-filters .hf.is-on"></div>
+ </div>
+ </section>
+ </div>
+ </section>
+ </div>
+</main>
+
+<!-- 프로필 관리 -->
+<dialog class="dlg" id="dlg-profiles" aria-labelledby="pf-title">
+ <div class="dlg-inner">
+ <div class="dlg-head">
+ <div>
+ <h3 id="pf-title" tabindex="-1" autofocus>프로필 관리</h3>
+ <p class="dlg-sub">댓글을 달 크롬 프로필이에요. 처음 한 번만 로그인해 두면 돼요.</p>
+ </div>
+ <form method="dialog"><button class="btn btn-close" value="close" aria-label="닫기">닫기</button></form>
+ </div>
+ <div class="dlg-body">
+ <ol class="howto">
+ <li><b>[로그인 창 열기]</b>를 눌러요</li>
+ <li>열린 크롬 창에서 <b>구글 로그인</b> → 창을 닫아요</li>
+ <li><b>[상태 확인]</b>을 눌러요</li>
+ </ol>
+ <div class="plist" id="profile-list"></div>
+ <p class="dlg-foot">한 영상에는 한 계정만 댓글을 달 수 있어요. 비밀번호는 이 프로그램이 다루지 않아요.</p>
+ </div>
+ </div>
+</dialog>
+
+<!-- 설정 — 탭 6개(프로필 · 영상 찾기 · 댓글 규칙 · 게시·확인 · AI 엔진 · AI 말투 · 규칙), 탭마다 따로 저장.
+ 넓은 화면은 왼쪽 세로 탭, 좁은 화면(390)은 위쪽 가로 스크롤 탭. 패널 아래 고정 바 [되돌리기] [저장]. -->
+<dialog class="dlg dlg-settings" id="dlg-settings" aria-labelledby="st-title">
+ <div class="dlg-inner st-shell">
+ <div class="dlg-head st-head">
+ <div class="st-headline">
+ <div>
+ <h3 id="st-title" tabindex="-1">설정</h3>
+ <p class="dlg-sub">탭을 고르고 칸의 값을 바꾼 뒤 아래 [저장]을 누르면 돼요 · 탭마다 따로 저장해요</p>
+ </div>
+ </div>
+ <button type="button" class="btn btn-close" data-action="st-close" aria-label="설정 닫기">닫기</button>
+ </div>
+ <div class="st-layout">
+ <div class="st-tabs" id="st-tabs" role="tablist" aria-orientation="vertical" aria-label="설정 묶음"></div>
+ <section class="st-panel" id="st-panel" role="tabpanel" aria-labelledby="st-tab-profiles" tabindex="-1">
+ <header class="st-panel-head" id="st-panel-head"></header>
+ <div class="st-panel-body" id="st-panel-body" data-focus-home="#st-panel"></div>
+ <div class="st-bar" id="st-bar"></div>
+ </section>
+ </div>
+ </div>
+</dialog>
+
+<!-- 본 화면 '이 단계 설정' 칩 → 작은 팝오버(좁은 화면은 아래 시트) — 설정 창과 같은 입력칸 -->
+<div class="gpop-scrim" id="gpop-scrim" hidden></div>
+<section class="gpop" id="gpop" role="dialog" aria-modal="true" aria-labelledby="gpop-title" hidden>
+ <div class="gpop-inner" id="gpop-inner"></div>
+</section>
+
+<!-- 확인 창 -->
+<dialog class="dlg dlg-sm" id="dlg-confirm" aria-labelledby="cf-title">
+ <form method="dialog" class="dlg-inner">
+ <div class="dlg-head cf-head"><span class="cf-badge" id="cf-badge" aria-hidden="true"></span><h3 id="cf-title">확인</h3></div>
+ <div class="dlg-body">
+ <p class="cf-body" id="cf-body"></p>
+ <blockquote class="cf-quote" id="cf-quote" hidden></blockquote>
+ <ul class="cf-list" id="cf-list" hidden></ul>
+ </div>
+ <div class="dlg-actions">
+ <button class="btn" value="cancel">취소</button>
+ <button class="btn btn-danger" value="ok" id="cf-ok">확인</button>
+ </div>
+ </form>
+</dialog>
+
+<!-- 스크린샷 크게 보기 -->
+<dialog class="dlg dlg-shot" id="dlg-shot" aria-labelledby="shot-cap">
+ <div class="dlg-inner">
+ <div class="shot-head">
+ <span class="shot-cap" id="shot-cap" tabindex="-1" autofocus>스크린샷</span>
+ <a class="btn btn-sm btn-ondark" id="shot-open" href="#" target="_blank" rel="noopener">새 탭에서 열기</a>
+ <form method="dialog"><button class="btn btn-sm btn-ondark" value="close" aria-label="닫기">닫기</button></form>
+ </div>
+ <div class="shot-stage"><img id="shot-img" alt="게시 엔진이 남긴 화면 캡처"></div>
+ </div>
+</dialog>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite" popover="manual"></div>
+
+<script src="/static/app.js?v=1" defer></script>
+</body>
+</html>
