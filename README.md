@@ -40,3 +40,7 @@
 - Windows 10/11 (64비트)
 - 댓글 게시에는 구글 크롬
 - 초안 작성에는 Claude / GPT / Gemini 중 하나의 API 키, 또는 이 PC에 로그인된 AI 프로그램(Claude Code · Codex · Hermes 등)
+
+## 제작 의도
+
+왜 이렇게 설계했는지는 [제작의도.md](제작의도.md)에 정리했습니다.
